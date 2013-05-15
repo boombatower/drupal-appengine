@@ -361,6 +361,8 @@ function system_requirements($phase) {
     }
     $is_writable = is_writable($directory);
     $is_directory = is_dir($directory);
+    // Force Drupal to think the directories are writable during installation.
+    $is_writable = $is_directory = TRUE;
     if (!$is_writable || !$is_directory) {
       $description = '';
       $requirements['file system']['value'] = $t('Not writable');
