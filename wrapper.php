@@ -1,4 +1,18 @@
 <?php
+/**
+ * @file
+ * Provide mod_rewrite like functionality and correct $_SERVER['SCRIPT_NAME'].
+ *
+ * Pass through requests for root php files and forward all other requests to
+ * index.php with $_GET['q'] equal to path. In terms of how the requests will
+ * seem please see the following examples.
+ *
+ * - /install.php: install.php
+ * - /update.php?op=info: update.php?op=info
+ * - /foo/bar: index.php?q=/foo/bar
+ * - /: index.php?q=/
+ */
+
 $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 
 // Provide mod_rewrite like functionality. If a php file in the root directory
