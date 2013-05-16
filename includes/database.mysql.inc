@@ -67,6 +67,14 @@ function db_connect($url) {
     $url['host'] = $url['host'] .':'. $url['port'];
   }
 
+  // If host starts with cloudsql then alter host string since parse_url()
+  // will not parse with : and / in host name. Final form will look something
+  // like :/cloudsql/boombatower-drupal:drupal where the input $db_url was in
+  // the form 'mysql://root:@cloudsql__boombatower-drupal___drupal/drupal'.
+  if (strpos($url['host'], 'cloudsql') !== FALSE) {
+    $url['host'] = ':/' . str_replace(array('___', '__'), array(':', '/'), $url['host']);
+  }
+
   // - TRUE makes mysql_connect() always open a new link, even if
   //   mysql_connect() was called before with the same parameters.
   //   This is important if you are using two databases on the same

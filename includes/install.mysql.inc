@@ -37,6 +37,14 @@ function drupal_test_mysql($url, &$success) {
     $url['host'] = $url['host'] .':'. $url['port'];
   }
 
+  // If host starts with cloudsql then alter host string since parse_url()
+  // will not parse with : and / in host name. Final form will look something
+  // like :/cloudsql/boombatower-drupal:drupal where the input $db_url was in
+  // the form 'mysql://root:@cloudsql__boombatower-drupal___drupal/drupal'.
+  if (strpos($url['host'], 'cloudsql') !== FALSE) {
+    $url['host'] = ':/' . str_replace(array('___', '__'), array(':', '/'), $url['host']);
+  }
+
   // Test connecting to the database.
   $connection = @mysql_connect($url['host'], $url['user'], $url['pass'], TRUE, 2);
   if (!$connection) {
