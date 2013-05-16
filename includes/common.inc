@@ -888,13 +888,19 @@ function drupal_http_request($url, array $options = array()) {
       return $result;
   }
 
-  if (empty($options['context'])) {
-    $fp = @stream_socket_client($socket, $errno, $errstr, $options['timeout']);
-  }
-  else {
-    // Create a stream with context. Allows verification of a SSL certificate.
-    $fp = @stream_socket_client($socket, $errno, $errstr, $options['timeout'], STREAM_CLIENT_CONNECT, $options['context']);
-  }
+  // Use a stream instead of unsupported socket. This is not done in a
+  // completely clean manor and thus only supports basic GET requests. This
+  // can be improved, separated into a new function, and this function
+  // overriden by setting the variable 'drupal_http_request_function'.
+  $context = stream_context_create(array('http' => $options));
+  $fp = fopen($url, 'r', false, $context);
+//   if (empty($options['context'])) {
+//     $fp = @stream_socket_client($socket, $errno, $errstr, $options['timeout']);
+//   }
+//   else {
+//     // Create a stream with context. Allows verification of a SSL certificate.
+//     $fp = @stream_socket_client($socket, $errno, $errstr, $options['timeout'], STREAM_CLIENT_CONNECT, $options['context']);
+//   }
 
   // Make sure the socket opened properly.
   if (!$fp) {
@@ -986,8 +992,10 @@ function drupal_http_request($url, array $options = array()) {
   // Parse response headers from the response body.
   // Be tolerant of malformed HTTP responses that separate header and body with
   // \n\n or \r\r instead of \r\n\r\n.
-  list($response, $result->data) = preg_split("/\r\n\r\n|\n\n|\r\r/", $response, 2);
-  $response = preg_split("/\r\n|\n|\r/", $response);
+  $result->data = $response;
+  $response = $http_response_header;
+//   list($response, $result->data) = preg_split("/\r\n\r\n|\n\n|\r\r/", $response, 2);
+//   $response = preg_split("/\r\n|\n|\r/", $response);
 
   // Parse the response status line.
   list($protocol, $code, $status_message) = explode(' ', trim(array_shift($response)), 3);
