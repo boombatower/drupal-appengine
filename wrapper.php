@@ -10,7 +10,7 @@
  * - /install.php: install.php
  * - /update.php?op=info: update.php?op=info
  * - /foo/bar: index.php?q=/foo/bar
- * - /: index.php?q=/
+ * - /: index.php (?q=/ works fine for Drupal 7, but not Drupal 6)
  */
 
 $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
@@ -26,7 +26,9 @@ else {
 
   // Provide mod_rewrite like functionality by using the path which excludes
   // any other part of the request query (ie. ignores ?foo=bar).
-  $_GET['q'] = $path;
+  if ($path != '/') {
+    $_GET['q'] = $path;
+  }
 }
 
 // Override the script name to simulate the behavior without wrapper.php.
