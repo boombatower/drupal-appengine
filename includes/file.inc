@@ -1625,7 +1625,18 @@ function file_save_upload($form_field_name, $validators = array(), $destination 
  * @ingroup php_wrappers
  */
 function drupal_move_uploaded_file($filename, $uri) {
-  $result = @move_uploaded_file($filename, $uri);
+  // move_uploaded_file() does not support moving a file between two different
+  // stream wrappers. Other file handling functions like rename() have the same
+  // problem, but copy() works since it explicitely sends the contents to the
+  // new source. As such move_uploaded_file() is replaced by is_uploaded_file(),
+  // copy(), and unlink() the old file.
+  //
+  // This is necessary since $filename will start with gs:// since the form
+  // will have been redirected through the GCS upload proxy. The destination
+  // $uri will contain something like public://, private://, etc which will end
+  // up translating to a gs:// location, but PHP is not aware of that.
+  $result = is_uploaded_file($filename) &&
+    copy($filename, $uri) && unlink($filename);
   // PHP's move_uploaded_file() does not properly support streams if safe_mode
   // or open_basedir are enabled so if the move failed, try finding a real path
   // and retry the move operation.
