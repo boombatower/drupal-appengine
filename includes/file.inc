@@ -2083,15 +2083,10 @@ function file_upload_max_size() {
   static $max_size = -1;
 
   if ($max_size < 0) {
-    // Start with post_max_size.
-    $max_size = parse_size(ini_get('post_max_size'));
-
-    // If upload_max_size is less, then reduce. Except if upload_max_size is
-    // zero, which indicates no limit.
-    $upload_max = parse_size(ini_get('upload_max_filesize'));
-    if ($upload_max > 0 && $upload_max < $max_size) {
-      $max_size = $upload_max;
-    }
+    // Since uploads are proxied through GCS they are not limited by
+    // 'post_max_size'. As such, use the 'upload_max_filesize' ini setting which
+    // should provide the GCS limit instead of the normal core logic.
+    $max_size = parse_size(ini_get('upload_max_filesize'));
   }
   return $max_size;
 }
