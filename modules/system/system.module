@@ -2173,11 +2173,12 @@ function system_admin_menu_block($item) {
  *   The form element containing the name of the directory to check.
  */
 function system_check_directory($form_element) {
-  $directory = $form_element['#value'];
-  if (strlen($directory) == 0) {
+  if (strlen($form_element['#value']) == 0) {
     return $form_element;
   }
 
+  // The stream wrapper should already have loaded the updated directory path.
+  $directory = $form_element['#wrapper_scheme'] . '://';
   if (!is_dir($directory) && !drupal_mkdir($directory, NULL, TRUE)) {
     // If the directory does not exists and cannot be created.
     form_set_error($form_element['#parents'][0], t('The directory %directory does not exist and could not be created.', array('%directory' => $directory)));

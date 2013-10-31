@@ -1790,6 +1790,7 @@ function system_file_system_settings() {
     '#maxlength' => 255,
     '#description' => t('A local file system path where public files will be stored. This directory must exist and be writable by Drupal. This directory must be relative to the Drupal installation directory and be accessible over the web.'),
     '#after_build' => array('system_check_directory'),
+    '#wrapper_scheme' => 'public',
   );
 
   $form['file_private_path'] = array(
@@ -1799,6 +1800,7 @@ function system_file_system_settings() {
     '#maxlength' => 255,
     '#description' => t('An existing local file system path for storing private files. It should be writable by Drupal and not accessible over the web. See the online handbook for <a href="@handbook">more information about securing private files</a>.', array('@handbook' => 'http://drupal.org/documentation/modules/file')),
     '#after_build' => array('system_check_directory'),
+    '#wrapper_scheme' => 'private',
   );
 
   $form['file_temporary_path'] = array(
@@ -1808,6 +1810,7 @@ function system_file_system_settings() {
     '#maxlength' => 255,
     '#description' => t('A local file system path where temporary files will be stored. This directory should not be accessible over the web.'),
     '#after_build' => array('system_check_directory'),
+    '#wrapper_scheme' => 'temporary',
   );
   // Any visible, writeable wrapper can potentially be used for the files
   // directory, including a remote file system that integrates with a CDN.
