@@ -2429,22 +2429,15 @@ function drupal_rmdir($uri, $context = NULL) {
  * @ingroup php_wrappers
  */
 function drupal_tempnam($directory, $prefix) {
+  // TODO Revert once tempnam() is properly supported.
   $scheme = file_uri_scheme($directory);
-
-  if ($scheme && file_stream_wrapper_valid_scheme($scheme)) {
-    $wrapper = file_stream_wrapper_get_instance_by_scheme($scheme);
-
-    if ($filename = tempnam($wrapper->getDirectoryPath(), $prefix)) {
-      return $scheme . '://' . drupal_basename($filename);
-    }
-    else {
-      return FALSE;
-    }
+  if (!$scheme) {
+    $directory = 'temporary://' . $directory;
   }
-  else {
-    // Handle as a normal tempnam() call.
-    return tempnam($directory, $prefix);
-  }
+
+  $name = $directory . '/' . $prefix . mt_rand(100000, 10000000);
+  file_put_contents($name, '');
+  return $name;
 }
 
 /**
