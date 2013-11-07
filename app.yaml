@@ -7,8 +7,10 @@ api_version: 1
 threadsafe: true
 
 handlers:
-# Default handler for requests (wrapper which will forward to index.php).
-- url: /
+# Files may end with static resource extensions used below and will attempt to
+# be served directly instead of through Drupal as expected. This router needs to
+# be first in order to take priority over static file router.
+- url: /system/(files|public|temporary)/(.+)
   script: wrapper.php
 
 # Handle static requests.
@@ -22,5 +24,10 @@ handlers:
 
 # Catch all unhandled requests and pass to wrapper.php which will simulate
 # mod_rewrite by forwarding the requests to index.php?q=...
-- url: /(.+)
+- url: /.*
   script: wrapper.php
+
+skip_files:
+# Tests should not be run in production. Remove if desired.
+- ^modules/simpletest
+- \.test$
