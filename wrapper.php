@@ -16,7 +16,7 @@
 $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 
 // Provide mod_rewrite like functionality. If a php file in the root directory
-// is explicitely requested then load the file, otherwise load index.php and
+// is explicitly requested then load the file, otherwise load index.php and
 // set get variable 'q' to $_SERVER['REQUEST_URI'].
 if (dirname($path) == '/' && pathinfo($path, PATHINFO_EXTENSION) == 'php') {
   $file = pathinfo($path, PATHINFO_BASENAME);
