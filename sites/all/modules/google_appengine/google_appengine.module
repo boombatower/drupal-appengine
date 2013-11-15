@@ -1,0 +1,326 @@
+<?php
+/**
+ * @file
+ * Provides primary Drupal hook implementations.
+ */
+
+use google\appengine\api\cloud_storage\CloudStorageTools;
+
+/**
+ * Implements hook_menu().
+ */
+function google_appengine_menu() {
+  // Used by DrupalPublicGoogleCloudStorageStreamWrapper.
+  $items['system/public'] = [
+    'title' => 'File download',
+    'page callback' => 'file_download',
+    'page arguments' => ['public'],
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK,
+  ];
+
+  return $items;
+}
+
+/**
+ * Implements hook_file_download().
+ */
+function google_appengine_file_download($uri) {
+  $scheme = file_uri_scheme($uri);
+  if ($scheme == 'public') {
+    $wrapper = file_stream_wrapper_get_class($scheme);
+    return [
+      'Content-Type' => $wrapper::getMimeType($uri)
+    ];
+  }
+}
+
+/**
+ * Implements hook_stream_wrappers().
+ */
+function google_appengine_stream_wrappers() {
+  $wrappers = [
+    'gs' => [
+      'name' => 'Google Cloud Storage',
+      'class' => 'DrupalCloudStorageStreamWrapper',
+      'description' => t('Google Cloud Storage'),
+      'type' => STREAM_WRAPPERS_HIDDEN,
+    ],
+    'gsb' => [
+      'name' => 'Google Cloud Storage - Bucketless',
+      'class' => 'DrupalCloudStorageBucketlessStreamWrapper',
+      'description' => t('Google Cloud Storage'),
+      'type' => STREAM_WRAPPERS_HIDDEN,
+    ],
+  ];
+
+  return $wrappers;
+}
+
+/**
+ * Implements hook_stream_wrappers_alter().
+ */
+function google_appengine_stream_wrappers_alter(&$wrappers) {
+  // Alter the three stream wrappers provided by Drupal core [defined in
+  // system_stream_wrappers()] to use Google Cloud Storage equivalents.
+  $suffix = ' (on Google Cloud Storage)';
+  foreach (['public', 'private', 'temporary'] as $key) {
+    // Check if key is set to handle private handler which may not be defined.
+    if (isset($wrappers[$key])) {
+      $wrappers[$key]['class'] = 'Drupal' . ucfirst($key) . 'CloudStorageStreamWrapper';
+
+      // The name and description are displayed in different locations and not
+      // usually together so append the suffix to both keys.
+      $wrappers[$key]['name'] .= $suffix;
+      $wrappers[$key]['description'] .= $suffix;
+    }
+  }
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter(): system_file_system_settings.
+ *
+ * Add Google Cloud Storage settings to file system setting form since all the
+ * core stream wrappers are overridden to point to GCS.
+ */
+function google_appengine_form_system_file_system_settings_alter(&$form, &$form_alter) {
+  $form['google_appengine'] = [
+    '#type' => 'fieldset',
+    '#title' => t('Google Cloud Storage'),
+    '#description' => t('The local file system stream wrappers provided by core (public, private, temporary) are overridden to use <a href="!gcs">Google Cloud Storage</a>. A default bucket is used for all core stream wrappers and the file paths shown above are created within the default bucket.', ['!gcs' => 'https://cloud.google.com/products/cloud-storage']),
+    '#collapsible' => TRUE,
+    '#collapsed' => TRUE,
+  ];
+
+  require_once 'google/appengine/api/cloud_storage/CloudStorageTools.php';
+  $bucket = CloudStorageTools::getDefaultGoogleStorageBucketName();
+  $form['google_appengine']['google_appengine_default_storage_bucket'] = [
+    '#type' => 'textfield',
+    '#title' => t('Default bucket'),
+    '#description' => t('The default bucket to use with the gsb:// (bucketless) stream wrapper which is used by all core Drupal stream wrappers. If a Drupal variable is not set than the value will be taken from App Engine default bucket setting (currently: @bucket), otherwise the Drupal variable will be used.', ['@bucket' => $bucket ?: 'none']),
+    '#default_value' => google_appengine_default_storage_bucket(),
+    '#required' => !$bucket, // Only require if not app default.
+  ];
+  $form['google_appengine']['google_appengine_default_storage_cname'] = [
+    '#type' => 'checkbox',
+    '#title' => t('Custom serving domain'),
+    '#description' => t('Instead of serving from storage.googleapis.com use a <a href="!link">custom domain</a>.', ['!link' => 'https://developers.google.com/storage/docs/reference-uris#cname']),
+    '#default_value' => variable_get('google_appengine_default_storage_cname'),
+  ];
+
+  // If the default bucket is not available then disable the #after_build call
+  // to system_check_directory() which will make use of the stream wrappers to
+  // check if directories exist and attempt to create them. It will fail since
+  // the gs:// paths will not contain a bucket. Once the value is added then
+  // then the #after_build will kick off when building the page post save.
+  if (!$form['google_appengine']['google_appengine_default_storage_bucket']['#default_value']) {
+    $wrappers = file_get_stream_wrappers(STREAM_WRAPPERS_LOCAL);
+    foreach ($wrappers as $key => $wrapper) {
+      $key = sprintf('file_%s_path', $key);
+      unset($form[$key]['#after_build']);
+    }
+  }
+
+  $form['#submit'][] = 'google_appengine_default_storage_bucket_cache_clear';
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter(): system_performance_settings.
+ */
+function google_appengine_form_system_performance_settings_alter(&$form, &$form_alter) {
+  $form['bandwidth_optimization']['google_appengine'] = [
+    '#type' => 'fieldset',
+    '#title' => t('Google Cloud Storage'),
+    '#description' => t(''),
+    '#collapsible' => TRUE,
+    '#collapsed' => TRUE,
+  ];
+  $readme = google_appengine_load_readme();
+  $form['bandwidth_optimization']['google_appengine']['google_appengine_aggregate'] = [
+    '#type' => 'radios',
+    '#title' => t('Serve aggregated resources'),
+    '#description' => '<pre>' . t($readme['AGGREGATE CSS & JS']) . '</pre>',
+    '#default_value' => variable_get('google_appengine_aggregate', 'proxy'),
+    '#options' => [
+      'static' => t('Directly from static files (recommended, but requires proper setup)'),
+      'proxy' => t('From GCS using Drupal menu router as proxy (default)'),
+      'gcs' => t('Directly from GCS'),
+    ],
+  ];
+}
+
+/**
+ * @return array
+ *   An associative array of README.txt heading to section text.
+ */
+function google_appengine_load_readme() {
+  $readme = file_get_contents(
+    drupal_get_path('module', 'google_appengine') . '/README.txt');
+  $chunks = preg_split('/^(.*?)$\n^[=]+$/m', $readme, -1, PREG_SPLIT_DELIM_CAPTURE);
+  $map = [];
+  // By calling next() right away this skips the first section which is intro
+  // text and does no contain a header.
+  while ($chunk = next($chunks)) {
+    $map[$chunk] = trim(next($chunks));
+  }
+  return $map;
+}
+
+/**
+ * Implements hook_form_alter().
+ */
+function google_appengine_form_alter(&$form, &$form_state, $form_id) {
+  // Determine if the form contains a file [upload] element.
+  if (google_appengine_form_file_exists($form)) {
+    // Alter the form action to submit through cloud storage.
+    google_appengine_form_alter_action($form, $form_state);
+  }
+}
+
+/**
+ * Determine if an element contains a file [upload] element.
+ *
+ * Check the current element and recursively the children stopping if a file
+ * [upload] element is found.
+ *
+ * @param array $element
+ *   An associative array representing a form element.
+ * @return boolean
+ *   True if a file [upload] element was found, otherwise false.
+ */
+function google_appengine_form_file_exists(&$element) {
+  // Check if current element is a file [upload] element.
+  $file_types = google_appengine_file_element_types();
+  if (isset($element['#type']) && in_array($element['#type'], $file_types)) {
+    return TRUE;
+  }
+
+  // If file form elements are later exposed the form action needs to be altered
+  // regardless of visibility, but for the time being it seems better to ignore
+  // non-visible elements.
+  $children = element_get_visible_children($element);
+  foreach ($children as $key) {
+    if (google_appengine_form_file_exists($element[$key])) {
+      return TRUE;
+    }
+  }
+
+  return FALSE;
+}
+
+/**
+ * Alter the form action to point to Google Cloud Storage.
+ *
+ * Using the default storage bucket a the action URL is generated using
+ * CloudStorageTools::createUploadUrl().
+ *
+ * @see CloudStorageTools::createUploadUrl()
+ * @see google_appengine_default_storage_bucket()
+ */
+function google_appengine_form_alter_action(&$form, &$form_state) {
+  require_once 'google/appengine/api/cloud_storage/CloudStorageTools.php';
+
+  $options = ['gs_bucket_name' => google_appengine_default_storage_bucket()];
+
+  // Only swap the form action if the default bucket has been configured,
+  // otherwise all form submissions will fail. Un-altered form actions will
+  // result in the file element values simply being dropped which allows forms
+  // to be processed and submitted if file elements are not required.
+  if (!$options['gs_bucket_name']) {
+    drupal_set_message(t('Please configure the <a href="!link">Google Cloud Storage default bucket</a> in order to upload files.', [
+      '!link' => url('admin/config/media/file-system', [
+        'fragment' => 'edit-google-appengine-default-storage-bucket'
+      ])]
+    ), 'error');
+  }
+  else {
+    $form['#action'] = CloudStorageTools::createUploadUrl($form['#action'], $options);
+  }
+}
+
+/**
+ * Get a list of file [upload] element types.
+ *
+ * Invokes google_appengine_file_element_types hook, merges with default types,
+ * and invokes alter hook. The defaults are file and file_managed provided by
+ * core.
+ *
+ * @return array
+ *   An array of file [upload] element types.
+ *
+ * @see hook_google_appengine_file_element_types()
+ * @see hook_google_appengine_file_element_types_alter()
+ */
+function google_appengine_file_element_types() {
+  if (!($types = &drupal_static(__FUNCTION__))) {
+    $types = ($cache = cache_get(__FUNCTION__)) ? $cache->data : [];
+  }
+
+  if (!$types) {
+    // Invoke hook to allow modules to define addition file element types.
+    $types = module_invoke_all('google_appengine_file_element_types');
+
+    // Merge returned types with default types provided by core.
+    $defaults = ['file', 'managed_file'];
+    $types = array_merge($types, $defaults);
+
+    // Allow element file element types to be altered.
+    drupal_alter('google_appengine_file_element_types', $types);
+
+    cache_set(__FUNCTION__, $types);
+  }
+
+  return $types;
+
+}
+
+/**
+ * Get the Google Cloud Storage default bucket.
+ *
+ * The bucket is taken from the following with the last active source winning.
+ * - CloudStorageTools::getDefaultGoogleStorageBucketName()
+ * - Drupal variable 'google_appengine_default_storage_bucket'
+ *
+ * The value is cached both statically and using cache system. Use
+ * google_appengine_default_storage_bucket_cache_clear() to clear both.
+ *
+ * @return string
+ *   Default Google Cloud Storage bucket.
+ *
+ * @see google_appengine_default_storage_bucket_cache_clear()
+ */
+function google_appengine_default_storage_bucket() {
+  if (!($bucket = &drupal_static(__FUNCTION__))) {
+    $bucket = ($cache = cache_get(__FUNCTION__)) ? $cache->data : FALSE;
+  }
+
+  if (!$bucket) {
+    require_once 'google/appengine/api/cloud_storage/CloudStorageTools.php';
+    $bucket = variable_get(__FUNCTION__,
+      CloudStorageTools::getDefaultGoogleStorageBucketName());
+    cache_set(__FUNCTION__, $bucket);
+  }
+
+  return $bucket;
+}
+
+/**
+ * Clear Google Cloud Storage default bucket.
+ *
+ * @see google_appengine_default_storage_bucket()
+ */
+function google_appengine_default_storage_bucket_cache_clear() {
+  cache_clear_all('google_appengine_default_storage_bucket', 'cache');
+  drupal_static_reset('google_appengine_default_storage_bucket');
+}
+
+/**
+ * Determine if running inside dev server.
+ *
+ * @return boolean
+ *   True if running side dev server, otherwise false.
+ */
+function google_appengine_is_dev_server() {
+  $key = 'Development';
+  return strncmp($_SERVER['SERVER_SOFTWARE'], $key, strlen($key)) === 0;
+}
