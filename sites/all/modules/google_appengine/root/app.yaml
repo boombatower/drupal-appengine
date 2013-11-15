@@ -1,0 +1,33 @@
+# See https://developers.google.com/appengine/docs/php/config/appconfig.
+
+application: drupal
+version: 1
+runtime: php
+api_version: 1
+threadsafe: true
+
+handlers:
+# Files may end with static resource extensions used below and will attempt to
+# be served directly instead of through Drupal as expected. This router needs to
+# be first in order to take priority over static file router.
+- url: /system/(files|public|temporary)/(.+)
+  script: wrapper.php
+
+# Handle static requests.
+- url: /(.*\.(ico$|jpg$|png$|gif$|htm$|html$|css$|js$))
+  # Location from which to serve static files.
+  static_files: \1
+  # Upload static files for static serving.
+  upload: (.*\.(ico$|jpg$|png$|gif$|htm$|html$|css$|js$))
+  # Ensures that a copy of the static files is left for Drupal during runtime.
+  application_readable: true
+
+# Catch all unhandled requests and pass to wrapper.php which will simulate
+# mod_rewrite by forwarding the requests to index.php?q=...
+- url: /.*
+  script: wrapper.php
+
+skip_files:
+# Tests should not be run in production. Remove if desired.
+- ^modules/simpletest
+- \.test$

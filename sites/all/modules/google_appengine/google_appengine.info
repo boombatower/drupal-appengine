@@ -1,0 +1,10 @@
+name = Google App Engine
+description = Optimize your Drupal installation for the Google App Engine platform.
+package = Google
+core = 7.x
+files[] = google_appengine.mail.inc
+files[] = google_appengine.stream_wrapper.inc
+configure = admin/config/media/file-system
+php = 5.4
+
+version = 7.x-1.0
