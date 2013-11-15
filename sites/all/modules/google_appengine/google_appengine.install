@@ -1,0 +1,45 @@
+<?php
+/**
+ * @file
+ * Provides installation functions.
+ */
+
+/**
+ * Implements hook_requirements().
+ */
+function google_appengine_requirements($phase) {
+  $requirements = [];
+
+  if ($phase != 'runtime') {
+    return $requirements;
+  }
+
+  $requirements['google_appengine_application_id'] = [
+    'title' => t('Google Appengine application ID'),
+    'value' => $_SERVER['APPLICATION_ID'],
+    'severity' => REQUIREMENT_INFO,
+  ];
+
+  return $requirements;
+}
+
+/**
+ * Implements hook_install().
+ */
+function google_appengine_install() {
+  // Get the current mail_system variable and override the 'default-system'
+  // portion to allow for any other values to remain.
+  $mail_system = variable_get('mail_system', []);
+  $mail_system['default-system'] = 'GoogleAppenegineMailSystem';
+  variable_set('mail_system', $mail_system);
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function google_appengine_uninstall() {
+  variable_del('google_appengine_aggregate');
+  variable_del('google_appengine_default_storage_cname');
+  variable_del('google_appengine_default_storage_bucket');
+  variable_del('mail_system');
+}

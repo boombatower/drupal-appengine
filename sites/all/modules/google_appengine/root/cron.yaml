@@ -1,0 +1,14 @@
+# See https://developers.google.com/appengine/docs/php/config/cron.
+#
+# In order to use, the cron_key variable must be filled in with the value for
+# the Drupal site for which the cron is to be run. Simply visit
+# admin/reports/status and copy everything after cron.php. The resulting path
+# should look like the following /cron.php?cron_key=BLAHBLAH.
+#
+# The schedule may need to be customized to suite the needs of the site.
+
+cron:
+# Uncomment once cron_key is filled in.
+#- description: Drupal system cron
+#  url: /cron.php
+#  schedule: every 24 hours
