@@ -30,8 +30,3 @@ handlers:
 # mod_rewrite by forwarding the requests to index.php?q=...
 - url: /.*
   script: wrapper.php
-
-skip_files:
-# Tests should not be run in production. Remove if desired.
-- ^modules/simpletest
-- \.test$
