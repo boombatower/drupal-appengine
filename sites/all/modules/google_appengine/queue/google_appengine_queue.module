@@ -1,0 +1,83 @@
+<?php
+/**
+ * @file
+ * Provides primary Drupal hook implementations.
+ *
+ * App Engine Push Task Queues allow queue items to be processed in requests
+ * started by App Engine. Unlike pull queues there is no ability to directly
+ * manipulate the items contained within the queue. Instead items are
+ * automatically removed after the process request has completed. Drupal cron
+ * queues defined by hook_cron_queue_info() is a very similar concept that lends
+ * itself nicely to being implemented with AE Task Queues.
+ *
+ * See DrupalGoogleAppenginePushTaskQueue which only implements createItem().
+ */
+
+/**
+ * Implements hook_menu().
+ */
+function google_appengine_queue_menu() {
+  // App Engine invokes to process queue items managed by
+  // DrupalGoogleAppenginePushTaskQueue.
+  $items['system/queue/%'] = [
+    'page callback' => 'google_appengine_queue_callback',
+    'page arguments' => [2],
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK,
+  ];
+
+  return $items;
+}
+
+/**
+ * Process a queue item using the callback defined for the queue.
+ *
+ * Drupal provides hook_cron_queue_info() which alls a callback for processing
+ * items of a specific queue to be defined. Those items are normally processed
+ * on a cron run, but when using App Engine push queues this callback is invoked
+ * for each item.
+ *
+ * The queue item data is provided in serialized form by $_REQUEST['data'] and
+ * as such must be passed through unserialize() before being utilized.
+ *
+ * The implementation has been adapted from drupal_cron_run(). Since each item
+ * is processed in a different request the 'time' key is ignored. Normally, the
+ * time value is used to limit the number of items processed within a request.
+ *
+ * @param string $queue_name
+ *   Name of queue containing the item.
+ *
+ * @see drupal_cron_run()
+ */
+function google_appengine_queue_callback($queue_name) {
+  $queues = module_invoke_all('cron_queue_info');
+  drupal_alter('cron_queue_info', $queues);
+
+  $function = $queues[$queue_name]['worker callback'];
+  $data = unserialize($_REQUEST['data']);
+  $function($data);
+}
+
+/**
+ * Implements hook_flush_caches().
+ */
+function google_appengine_flush_caches() {
+  $queues = module_invoke_all('cron_queue_info');
+  drupal_alter('cron_queue_info', $queues);
+
+  foreach ($queues as $queue_name => $info) {
+    $queue = DrupalQueue::get($queue_name);
+    // Ignore queues already managed by App Engine push task queue.
+    if ($queue instanceof DrupalGoogleAppenginePushTaskQueue) continue;
+
+    // Avoid orphaning queue items since the push queue implementation does not
+    // allow items to be accessed directly.
+    if ($queue->numberOfItems()) {
+      drupal_set_message(t(
+          'Skipped setting queue_class variable for @name since the queue is not empty.'.
+          ['@name' => $queue_name]),
+        'warning');
+    }
+    variable_set('queue_class_' . $queue_name, 'DrupalGoogleAppenginePushTaskQueue');
+  }
+}

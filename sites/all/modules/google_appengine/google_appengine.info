@@ -7,4 +7,4 @@ files[] = google_appengine.stream_wrapper.inc
 configure = admin/config/media/file-system
 php = 5.4
 
-version = 7.x-1.0
+version = 7.x-1.1

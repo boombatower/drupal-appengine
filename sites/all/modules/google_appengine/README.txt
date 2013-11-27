@@ -3,8 +3,8 @@ Optimize your Drupal installation for the Google App Engine platform.
 - App Engine mail service
 
     Implements Drupal MailSystemInterface to make use of the App Engine mail
-    service. The system email address will be used as the default from address
-    and authorized to send mail. To configure the address visit
+    service. The system email address will be used as the default sender
+    address and must be authorized to send mail. To configure the address visit
     admin/config/system/site-information and for details on App Engine mail
     service see https://developers.google.com/appengine/docs/php/mail/.
 
@@ -16,6 +16,11 @@ Optimize your Drupal installation for the Google App Engine platform.
     integration to function properly. The standard mechanisms for controlling
     the file system setup (admin/config/media/file-system) can be used and
     file fields can be stored within one of the default stream wrappers.
+
+    File MIME types are determined by DrupalLocalStreamWrapper::getMimeType()
+    which consults file_mimetype_mapping() for a mapping of extensions to MIME
+    types. The type is included in the stream context when writing files to GCS
+    and as such the file will be served with the assigned MIME type.
 
 - Drupal core patch (root/core.patch)
 
@@ -63,6 +68,12 @@ All the changes can be applied using root/core.patch manually, using the
 included drush make file (recommended, see https://github.com/drush-ops/drush),
 or the entire tree with everything included downloaded from github.
 
+  https://github.com/boombatower/drupal-appengine/releases (pick latest release)
+
+If Drush make is preferred use either the drupal-full.make which includes other
+recommended modules or drupal.make which includes core and this module.
+
+  drush make http://drupalcode.org/project/google_appengine.git/blob_plain/refs/heads/7.x-1.x:/root/drupal-full.make
   drush make http://drupalcode.org/project/google_appengine.git/blob_plain/refs/heads/7.x-1.x:/root/drupal.make
 
 Or, applied manually as follows.
@@ -93,7 +104,7 @@ to change the settings.php file to reflect the different database connection
 details needed in the two environments. As such it is recommended to use a
 conditional statement as shown below in settings.php.
 
-if(isset($_SERVER['SERVER_SOFTWARE']) && strpos($_SERVER['SERVER_SOFTWARE'], 'Google App Engine') !== false) {
+if(strpos($_SERVER['SERVER_SOFTWARE'], 'Google App Engine') !== false) {
   // App Engine database credentials.
   $databases['default']['default'] = array(
     'database' => '{DATABASE}',
