@@ -22,6 +22,10 @@ handlers:
   # Ensures that a copy of the static files is left for Drupal during runtime.
   application_readable: true
 
+- url: /system/queue
+  script: wrapper.php
+  login: admin
+
 # Catch all unhandled requests and pass to wrapper.php which will simulate
 # mod_rewrite by forwarding the requests to index.php?q=...
 - url: /.*
