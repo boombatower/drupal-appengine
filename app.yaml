@@ -11,7 +11,7 @@ handlers:
 # be served directly instead of through Drupal as expected. This router needs to
 # be first in order to take priority over static file router.
 - url: /system/(files|public|temporary)/(.+)
-  script: wrapper.php
+  script: mod_rewrite.php
 
 # Handle static requests.
 - url: /(.*\.(ico|jpg|png|gif|htm|html|css|js))$
@@ -23,10 +23,10 @@ handlers:
   application_readable: true
 
 - url: /system/queue
-  script: wrapper.php
+  script: mod_rewrite.php
   login: admin
 
-# Catch all unhandled requests and pass to wrapper.php which will simulate
+# Catch all unhandled requests and pass to mod_rewrite.php which will simulate
 # mod_rewrite by forwarding the requests to index.php?q=...
 - url: /.*
-  script: wrapper.php
+  script: mod_rewrite.php

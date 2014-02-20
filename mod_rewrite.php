@@ -1,11 +1,11 @@
 <?php
 /**
  * @file
- * Provide mod_rewrite like functionality and correct $_SERVER['SCRIPT_NAME'].
+ * Provide basic mod_rewrite like functionality.
  *
  * Pass through requests for root php files and forward all other requests to
- * index.php with $_GET['q'] equal to path. In terms of how the requests will
- * seem please see the following examples.
+ * index.php with $_GET['q'] equal to path. The following are examples that
+ * demonstrate how a request using mod_rewrite.php will appear to a PHP script.
  *
  * - /install.php: install.php
  * - /update.php?op=info: update.php?op=info
@@ -29,9 +29,8 @@ else {
   $_GET['q'] = $path;
 }
 
-// Override the script name to simulate the behavior without wrapper.php.
+// Override the script name to simulate the behavior without mod_rewrite.php.
 // Ensure that $_SERVER['SCRIPT_NAME'] always begins with a / to be consistent
-// with HTTP request and the value that is normally provided (not what GAE
-// currently provides).
+// with HTTP request and the value that is normally provided.
 $_SERVER['SCRIPT_NAME'] = '/' . $file;
 require $file;
