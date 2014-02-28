@@ -3,8 +3,8 @@ Optimize your Drupal installation for the Google App Engine platform.
 - App Engine mail service
 
     Implements Drupal MailSystemInterface to make use of the App Engine mail
-    service. The system email address will be used as the default from address
-    and authorized to send mail. To configure the address visit
+    service. The system email address will be used as the default sender
+    address and must be authorized to send mail. To configure the address visit
     admin/config/system/site-information and for details on App Engine mail
     service see https://developers.google.com/appengine/docs/php/mail/.
 
@@ -16,6 +16,23 @@ Optimize your Drupal installation for the Google App Engine platform.
     integration to function properly. The standard mechanisms for controlling
     the file system setup (admin/config/media/file-system) can be used and
     file fields can be stored within one of the default stream wrappers.
+
+    File MIME types are determined by DrupalLocalStreamWrapper::getMimeType()
+    which consults file_mimetype_mapping() for a mapping of extensions to MIME
+    types. The type is included in the stream context when writing files to GCS
+    and as such the file will be served with the assigned MIME type.
+
+- Task Queues
+
+    Implements DrupalQueueInterface to be backed by App Engine Push Queues. The
+    PHP implementation provided by App Engine does not currently support Pull
+    Queues which limits the use. Instead of being able to back all Drupal queues
+    only those defined by hook_cron_queue_info() can be backed by App Engine
+    since they are implemented in a manor compatible with Push Queues. Enable
+    the 'App Engine - Push Task Queues' module which will swap the
+    implementation for all empty cron queues. If a cron queue has items simply
+    run cron until it is empty and then clear cache and the implementation will
+    be swapped. To know if you hit this case simply check watchdog log.
 
 - Drupal core patch (root/core.patch)
 
@@ -29,8 +46,6 @@ Optimize your Drupal installation for the Google App Engine platform.
 
     - Add app.yaml to root which provides basic information about the app to
       Google App Engine so that it can invoke Drupal properly.
-    - Alters drupal_http_request() in common.inc to work without requiring
-      socket support.
     - Alters drupal_move_uploaded_file() in includes/file.inc to support newly
       uploaded files from the $_FILES array being referenced via a stream
       wrapper. In the case of App Engine all uploaded files are uploaded through
@@ -56,6 +71,18 @@ Optimize your Drupal installation for the Google App Engine platform.
       turns on output buffering.
     - Adds wrapper.php to root which simulates Apache mod_rewrite like behavior.
 
+- Drupal core overrides
+
+  - drupal_http_request() is overriden using the variable
+    'drupal_http_request_function' to call a function defined in the App Engine
+    module. The altered drupal_http_request() works without requiring socket
+    support. The changes are maintain by rolling core/drupal_http_request.patch
+    forward with core changes.
+  - Cron may be overriden to use the App Engine cron mechanism. Please see
+    cron.yaml (patched into root of Drupal) for details on how to configure. For
+    further details on App Engine's cron mechanism see the documentation,
+    https://developers.google.com/appengine/docs/php/config/cron.
+
 INITIAL SETUP
 =============
 
@@ -63,6 +90,12 @@ All the changes can be applied using root/core.patch manually, using the
 included drush make file (recommended, see https://github.com/drush-ops/drush),
 or the entire tree with everything included downloaded from github.
 
+  https://github.com/boombatower/drupal-appengine/releases (pick latest release)
+
+If Drush make is preferred use either the drupal-full.make which includes other
+recommended modules or drupal.make which includes core and this module.
+
+  drush make http://drupalcode.org/project/google_appengine.git/blob_plain/refs/heads/7.x-1.x:/root/drupal-full.make
   drush make http://drupalcode.org/project/google_appengine.git/blob_plain/refs/heads/7.x-1.x:/root/drupal.make
 
 Or, applied manually as follows.
@@ -93,7 +126,7 @@ to change the settings.php file to reflect the different database connection
 details needed in the two environments. As such it is recommended to use a
 conditional statement as shown below in settings.php.
 
-if(isset($_SERVER['SERVER_SOFTWARE']) && strpos($_SERVER['SERVER_SOFTWARE'], 'Google App Engine') !== false) {
+if(strpos($_SERVER['SERVER_SOFTWARE'], 'Google App Engine') !== false) {
   // App Engine database credentials.
   $databases['default']['default'] = array(
     'database' => '{DATABASE}',

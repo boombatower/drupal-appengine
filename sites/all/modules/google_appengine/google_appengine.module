@@ -92,7 +92,6 @@ function google_appengine_form_system_file_system_settings_alter(&$form, &$form_
     '#collapsed' => TRUE,
   ];
 
-  require_once 'google/appengine/api/cloud_storage/CloudStorageTools.php';
   $bucket = CloudStorageTools::getDefaultGoogleStorageBucketName();
   $form['google_appengine']['google_appengine_default_storage_bucket'] = [
     '#type' => 'textfield',
@@ -218,8 +217,6 @@ function google_appengine_form_file_exists(&$element) {
  * @see google_appengine_default_storage_bucket()
  */
 function google_appengine_form_alter_action(&$form, &$form_state) {
-  require_once 'google/appengine/api/cloud_storage/CloudStorageTools.php';
-
   $options = ['gs_bucket_name' => google_appengine_default_storage_bucket()];
 
   // Only swap the form action if the default bucket has been configured,
@@ -295,7 +292,6 @@ function google_appengine_default_storage_bucket() {
   }
 
   if (!$bucket) {
-    require_once 'google/appengine/api/cloud_storage/CloudStorageTools.php';
     $bucket = variable_get(__FUNCTION__,
       CloudStorageTools::getDefaultGoogleStorageBucketName());
     cache_set(__FUNCTION__, $bucket);
@@ -323,4 +319,17 @@ function google_appengine_default_storage_bucket_cache_clear() {
 function google_appengine_is_dev_server() {
   $key = 'Development';
   return strncmp($_SERVER['SERVER_SOFTWARE'], $key, strlen($key)) === 0;
+}
+
+/**
+ * Implements an App Engine compatible drupal_http_request().
+ *
+ * The variable 'drupal_http_request_function' is set the this function during
+ * installation.
+ *
+ * @see drupal_http_request()
+ */
+function google_appengine_drupal_http_request($url, array $options = []) {
+  module_load_include('http.inc', 'google_appengine');
+  return _google_appengine_drupal_http_request($url, $options);
 }

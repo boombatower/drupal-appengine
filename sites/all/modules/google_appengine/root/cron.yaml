@@ -2,8 +2,12 @@
 #
 # In order to use, the cron_key variable must be filled in with the value for
 # the Drupal site for which the cron is to be run. Simply visit
-# admin/reports/status and copy everything after cron.php. The resulting path
-# should look like the following /cron.php?cron_key=BLAHBLAH.
+# admin/config/system/cron and copy everything after cron.php. The resulting
+# path should look like the following /cron.php?cron_key=BLAHBLAH. Once
+# configured the built-in cron should be set to 'never' since it should not need
+# to run. Note that the two will not duplicate eachother since they will check
+# when the last cron run was completed, but App Engine cron should be preferred
+# if configured.
 #
 # The schedule may need to be customized to suite the needs of the site.
 

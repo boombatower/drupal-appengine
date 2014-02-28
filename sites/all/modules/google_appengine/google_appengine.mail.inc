@@ -5,8 +5,6 @@
  * Drupal mail system implementation for Google App Engine.
  */
 
-require_once 'google/appengine/api/mail/Message.php';
-
 use google\appengine\api\mail\Message;
 
 class GoogleAppenegineMailSystem implements MailSystemInterface {

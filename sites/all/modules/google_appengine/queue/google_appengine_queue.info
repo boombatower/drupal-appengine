@@ -1,0 +1,13 @@
+name = App Engine - Push Task Queues
+description = Integrates Drupal's hook_cron_queue_info() style queues system with App Engine push task queues.
+package = Google
+core = 7.x
+files[] = google_appengine_queue.push.inc
+php = 5.4
+
+; Information added by Drupal.org packaging script on 2014-02-28
+version = "7.x-1.2"
+core = "7.x"
+project = "google_appengine"
+datestamp = "1393615106"
+

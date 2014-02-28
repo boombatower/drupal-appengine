@@ -1,4 +1,6 @@
 ; Drush Make (http://drupal.org/project/drush)
+; Includes recommended projects for use with App Engine. Use drupal.make for
+; minimal Drupal build.
 api = 2
 
 ; Drupal core
@@ -11,3 +13,6 @@ projects[drupal][patch][appengine] = http://drupalcode.org/project/google_appeng
 
 projects[google_appengine][type] = module
 projects[google_appengine][version] = 1.x
+
+projects[memcache][type] = module
+projects[memcache][version] = 1.0

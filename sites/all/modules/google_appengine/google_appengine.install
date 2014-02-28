@@ -27,6 +27,8 @@ function google_appengine_requirements($phase) {
  * Implements hook_install().
  */
 function google_appengine_install() {
+  variable_set('drupal_http_request_function', 'google_appengine_drupal_http_request');
+
   // Get the current mail_system variable and override the 'default-system'
   // portion to allow for any other values to remain.
   $mail_system = variable_get('mail_system', []);
@@ -38,8 +40,16 @@ function google_appengine_install() {
  * Implements hook_uninstall().
  */
 function google_appengine_uninstall() {
+  variable_del('drupal_http_request_function');
   variable_del('google_appengine_aggregate');
   variable_del('google_appengine_default_storage_cname');
   variable_del('google_appengine_default_storage_bucket');
   variable_del('mail_system');
+}
+
+/**
+ * Set variable 'drupal_http_request_function' to override function.
+ */
+function google_appengine_update_7100() {
+  variable_set('drupal_http_request_function', 'google_appengine_drupal_http_request');
 }

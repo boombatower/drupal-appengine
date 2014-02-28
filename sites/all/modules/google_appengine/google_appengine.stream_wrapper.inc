@@ -216,9 +216,12 @@ trait CloudStorageStreamWrapperTrait {
   public function setUri($uri) {
     $this->uri = $uri;
 
-    $uri_parts = parse_url($this->alterUri($uri));
-    $this->setBucket($uri_parts['host']);
-    $this->setObject($uri_parts['path']);
+    if ($uri_parts = parse_url($this->alterUri($uri))) {
+      $this->setBucket($uri_parts['host']);
+      if (isset($uri_parts['path'])) {
+        $this->setObject($uri_parts['path']);
+      }
+    }
   }
 
   /**
